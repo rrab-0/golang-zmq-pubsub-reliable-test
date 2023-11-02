@@ -1,3 +1,10 @@
+/**
+ *
+ * Simple publisher with socket-monitor,
+ * socket-monitor is used to handle sending messages
+ * when subscriber disconnects.
+ */
+
 package main
 
 import (
@@ -61,12 +68,12 @@ func main() {
 	for {
 		for isAbleToSend {
 			for len(queue) > 0 {
-				flag, err := publisher.Send(fmt.Sprintf("count: %d", queue[0]), 0)
+				flag, err := publisher.Send(fmt.Sprintf("count: from queue %d", queue[0]), 0)
 				if err != nil {
-					fmt.Println("Publisher Error:", err)
+					fmt.Println("Queue Publisher Error:", err)
 					break
 				}
-				fmt.Printf("[flag, sends queueCount]: [%d, %d]\n", flag, queue[0])
+				fmt.Printf("[flag, sends from queue]: [%d, %d]\n", flag, queue[0])
 
 				queue = queue[1:]
 				time.Sleep(1 * time.Second)

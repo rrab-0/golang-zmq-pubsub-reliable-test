@@ -34,3 +34,5 @@ $ go run sub.go
 
 ### Subscriber
 ![Alt text](assets/subscriber-flowchart.png?raw=true "Subscriber Flowchart")
+
+## Notes

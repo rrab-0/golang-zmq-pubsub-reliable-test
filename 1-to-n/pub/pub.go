@@ -1,8 +1,9 @@
 /**
  *
- * Simple publisher with socket-monitor,
- * socket-monitor is used to handle sending messages
- * when subscriber disconnects.
+ * Simple publisher with socket-monitor.
+ * "Socket-Monitor" is used to count subscribers
+ * available, when one subscriber disconnects,
+ * publisher will stop sending messages.
  */
 
 package main
@@ -18,8 +19,11 @@ import (
 var (
 	queue        = make([]int, 0)
 	isAbleToSend = false
+	subCount     = 0
 )
 
+// Increment subCount if a sub connected,
+// Decrement if a sub disconnected.
 func pub_socket_monitor(addr string) {
 	s, err := zmq4.NewSocket(zmq4.PAIR)
 	if err != nil {
@@ -30,20 +34,21 @@ func pub_socket_monitor(addr string) {
 		log.Fatalln(err)
 	}
 	for {
-		a, b, c, err := s.RecvEvent(0)
+		eventType, addr, value, err := s.RecvEvent(0)
 		if err != nil {
 			log.Println(err)
 			break
 		}
 
-		if a == zmq4.EVENT_ACCEPTED {
-			isAbleToSend = true
+		if eventType == zmq4.EVENT_HANDSHAKE_SUCCEEDED {
+			subCount++
 		}
 
-		if a == zmq4.EVENT_DISCONNECTED {
-			isAbleToSend = false
+		if eventType == zmq4.EVENT_DISCONNECTED {
+			subCount--
 		}
-		log.Println(a, b, c)
+
+		log.Println(eventType, addr, value)
 	}
 	s.Close()
 }
@@ -57,17 +62,34 @@ func main() {
 	defer publisher.Close()
 
 	// PUB socket monitor, all events
-	err = publisher.Monitor("inproc://monitor.sub", zmq4.EVENT_ALL)
+	err = publisher.Monitor("inproc://monitor.pub", zmq4.EVENT_ALL)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	go pub_socket_monitor("inproc://monitor.sub")
+	go pub_socket_monitor("inproc://monitor.pub")
 
 	publisher.Bind("tcp://*:5555")
 	count := 0
+
+	// Main program loop
 	for {
+		if subCount == 10 {
+			isAbleToSend = true
+		}
+
 		for isAbleToSend {
+			if subCount != 10 {
+				break
+			}
+
+			// Send "lost" messages
+			// (when subs connected is not 10,
+			// messages are "lost" and sent into a queue)
 			for len(queue) > 0 {
+				if subCount != 10 {
+					break
+				}
+
 				flag, err := publisher.Send(fmt.Sprintf("count: from queue %d", queue[0]), 0)
 				if err != nil {
 					fmt.Println("Queue Publisher Error:", err)
@@ -79,6 +101,11 @@ func main() {
 				time.Sleep(1 * time.Second)
 			}
 
+			if subCount != 10 {
+				break
+			}
+
+			// Send message
 			flag, err := publisher.Send(fmt.Sprintf("count: %d", count), 0)
 			if err != nil {
 				fmt.Println("Publisher Error:", err)
@@ -90,6 +117,7 @@ func main() {
 			time.Sleep(1 * time.Second)
 		}
 
+		// For when a sub disconnect
 		queue = append(queue, count)
 		fmt.Println("Send to queue:", count)
 		count++

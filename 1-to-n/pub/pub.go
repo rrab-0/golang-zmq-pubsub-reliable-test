@@ -16,6 +16,10 @@ import (
 	"github.com/pebbe/zmq4"
 )
 
+const (
+	EXPECTED_SUB_COUNT = 10
+)
+
 var (
 	queue        = make([]int, 0)
 	isAbleToSend = false
@@ -73,20 +77,20 @@ func main() {
 
 	// Main program loop
 	for {
-		if subCount == 10 {
+		if subCount == EXPECTED_SUB_COUNT {
 			isAbleToSend = true
 		}
 
 		for isAbleToSend {
-			if subCount != 10 {
+			if subCount != EXPECTED_SUB_COUNT {
 				break
 			}
 
 			// Send "lost" messages
-			// (when subs connected is not 10,
+			// (when subs connected is not EXPECTED_SUB_COUNT,
 			// messages are "lost" and sent into a queue)
 			for len(queue) > 0 {
-				if subCount != 10 {
+				if subCount != EXPECTED_SUB_COUNT {
 					break
 				}
 
@@ -101,7 +105,7 @@ func main() {
 				time.Sleep(1 * time.Second)
 			}
 
-			if subCount != 10 {
+			if subCount != EXPECTED_SUB_COUNT {
 				break
 			}
 
